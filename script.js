@@ -36,11 +36,11 @@ const MISSION = {
     title: 'Молочные продукты',
     desc: 'Разместите товары по FIFO и проверяйте срок годности.',
     products: [
-        { id: 'm1', name: 'Молоко', arrival: '2025-06-10', expiry: '2025-08-01', img: 'images/milk_pack.png' },
-        { id: 'm2', name: 'Йогурт', arrival: '2025-07-01', expiry: '2025-07-20', img: 'images/milk_gallon.png' },
-        { id: 'm3', name: 'Сметана', arrival: '2025-06-20', expiry: '2025-07-25', img: 'images/plain_yogurt.png' },
-        { id: 'm4', name: 'Кефир', arrival: '2025-07-05', expiry: '2025-08-05', img: 'images/milk_bottle.png' },
-        { id: 'm5', name: 'Сыр', arrival: '2025-06-15', expiry: '2025-09-01', img: 'images/white_cheese_piece.png' }
+        { id: 'm1', name: 'Молоко', arrival: '2025-06-10', expiry: '2025-08-01', img: 'milk_pack.png' },
+        { id: 'm2', name: 'Йогурт', arrival: '2025-07-01', expiry: '2025-07-20', img: 'milk_gallon.png' },
+        { id: 'm3', name: 'Сметана', arrival: '2025-06-20', expiry: '2025-07-25', img: 'plain_yogurt.png' },
+        { id: 'm4', name: 'Кефир', arrival: '2025-07-05', expiry: '2025-08-05', img: 'milk_bottle.png' },
+        { id: 'm5', name: 'Сыр', arrival: '2025-06-15', expiry: '2025-09-01', img: 'white_cheese_piece.png' }
     ]
 };
 
@@ -209,4 +209,5 @@ resetBtn.addEventListener('click', loadMission);
     playerInfo.textContent = playerName || 'Гость';
     scoreEl.textContent = score;
     loadMission();
+
 })();
