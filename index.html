@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Сектор Товародвижение — демо</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="logo">
+        <!-- простая SVG-иконка -->
+        <svg width="48" height="48" viewBox="0 0 24 24" aria-hidden>
+          <rect x="2" y="6" width="20" height="12" rx="2" fill="#1f6feb"></rect>
+          <rect x="4" y="8" width="5" height="6" rx="1" fill="#9ad0ff"></rect>
+          <rect x="10" y="8" width="10" height="6" rx="1" fill="#cfe8ff"></rect>
+        </svg>
+      </div>
+      <div class="title">
+        <h1>Сектор Товародвижение</h1>
+        <p class="tagline">От приёмки до полки — управляй ротацией</p>
+      </div>
+      <div class="hdr-right">
+        <button id="btn-settings" class="icon-btn" aria-label="Настройки">⚙️</button>
+      </div>
+    </header>
+
+    <!-- регистрация -->
+    <section id="intro" class="panel center">
+      <label for="playerName" class="label">Введите имя</label>
+      <input id="playerName" class="text-input" placeholder="Ваше имя..." />
+      <div class="row">
+        <button id="startBtn" class="primary">Начать игру</button>
+        <button id="chooseMode" class="secondary">Выбор режима</button>
+      </div>
+      <p class="small">Версия демо · <span id="player-info">Гость</span></p>
+    </section>
+
+    <!-- игровой интерфейс -->
+    <section id="game" class="panel hidden">
+      <div class="topbar">
+        <div>Игрок: <b id="playerNameDisplay"></b></div>
+        <div>Очки: <b id="score">0</b></div>
+      </div>
+
+      <div class="layout">
+        <!-- Коробка товаров (лево) -->
+        <aside class="box" id="box">
+          <h3>📦 Коробка с товарами</h3>
+          <div id="productList" class="stack"></div>
+        </aside>
+
+        <!-- Полка (право) -->
+        <section class="shelf" id="shelf">
+          <h3>Полка для выкладки</h3>
+          <div id="shelfSlots" class="shelf-slots"></div>
+          <div class="shelf-hint">Перетаскивай товары сюда — соблюдай FIFO и следи за сроком годности</div>
+          <div class="controls">
+            <button id="checkBtn" class="primary small">Проверить</button>
+            <button id="resetLevel" class="secondary small">Сброс</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="missions" id="missions">
+        <label>Выберите миссию:</label>
+        <div class="mission-buttons">
+          <button class="mission-btn" data-id="1">Уровень 1 — Молочка</button>
+          <button class="mission-btn" data-id="2">Уровень 2 — Сухие</button>
+          <button class="mission-btn" data-id="3">Уровень 3 — Смешанная</button>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <small>Подсказка: товары показывают дату прихода и срок годности. FIFO — ранний приход вперёд.</small>
+      </footer>
+    </section>
+  </main>
+
+  <audio id="audio-success"></audio>
+  <audio id="audio-error"></audio>
+
+  <script src="script.js"></script>
+</body>
+</html>
