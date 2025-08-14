@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Сектор Товородвижение FIFO/FEFO</title>
+  <style>
+    /* ======== Тема и базовые переменные ======== */
+    :root{
+      --bg-main: linear-gradient(to bottom, #f8fafc, #ffffff);
+      --color-text:#0f172a;
+      --color-muted:#64748b;
+      --color-primary:#2563eb;
+      --color-accent:#10b981;
+      --color-warning:#f59e0b;
+      --color-danger:#ef4444;
+      --color-ok:#22c55e;
+      --color-border:#e2e8f0;
+      --soft:#f1f5f9;
+      --card:#ffffff;
+      --radius:14px;
+      --shadow:0 12px 28px rgba(2,6,23,.08);
+    }
+    *,*:before,*:after{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg-main); color:var(--color-text);
+      font:16px/1.5 system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial,sans-serif;
+    }
+
+    /* ======== Карточка приложения ======== */
+    .app{min-height:100svh; display:grid; place-items:center; padding:24px}
+    .card{
+      width:min(1100px,100%); background:var(--card); border:1px solid var(--color-border);
+      border-radius:24px; box-shadow:var(--shadow); overflow:hidden;
+    }
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:18px 22px; border-bottom:1px solid var(--color-border);
+      background:linear-gradient(180deg,#f8fafc 0%, #ffffff 60%);
+    }
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{
+      width:40px; height:40px; border-radius:12px;
+      background:conic-gradient(from 180deg at 50% 50%, #2563eb, #10b981, #2563eb);
+      box-shadow:0 6px 16px rgba(37,99,235,.25) inset, 0 1px 0 rgba(255,255,255,.6);
+    }
+    .title{display:flex; flex-direction:column}
+    .title h1{margin:0; font-size:20px}
+    .title small{color:var(--color-muted)}
+
+    /* ======== Экраны ======== */
+    .screen{display:none; padding:28px}
+    .screen.active{display:block; animation:fade .35s ease}
+    @keyframes fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+
+    /* ======== Общие элементы форм ======== */
+    .row{display:flex; gap:12px; flex-wrap:wrap}
+    .center{display:flex; justify-content:center; align-items:center}
+    .stack{display:grid; gap:14px}
+    .input{
+      width:100%; max-width:420px; padding:12px 14px; border:1px solid var(--color-border);
+      border-radius:12px; outline:none; background:#ffffff;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .input:focus{border-color:#bfdbfe; box-shadow:0 0 0 6px rgba(37,99,235,.08)}
+
+    .btn{
+      padding:12px 18px; border:0; border-radius:12px; cursor:pointer; font-weight:600;
+      transition:transform .18s, box-shadow .18s, background .18s, opacity .18s;
+      box-shadow:0 6px 16px rgba(15,23,42,.08);
+      display:inline-flex; align-items:center; gap:10px;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn:active{transform:translateY(0)}
+    .btn-primary{background:var(--color-primary); color:#fff}
+    .btn-accent{background:var(--color-accent); color:#fff}
+    .btn-danger{background:var(--color-danger); color:#fff}
+    .btn-ghost{background:#fff; color:var(--color-text); border:1px solid var(--color-border)}
+
+    .hint{color:var(--color-muted); font-size:14px}
+
+    /* ======== Инфопанель уровня ======== */
+    .level-info{
+      display:flex; justify-content:space-between; gap:16px; align-items:center;
+      padding:14px 18px; background:#f8fafc; border:1px solid var(--color-border);
+      border-radius:16px; margin:0 0 18px 0;
+    }
+    .level-info h2{margin:0; font-size:18px}
+    .pill{
+      padding:6px 10px; border-radius:999px; font-size:12px; border:1px solid var(--color-border);
+      background:#fff;
+    }
+
+    /* ======== Полка и товары ======== */
+    .shelf-wrap{display:flex; flex-direction:column; gap:18px; align-items:center; margin:12px 0 0}
+    .shelf-container{display:flex; justify-content:center; perspective:1000px}
+    .shelf{
+      display:grid; grid-template-columns:repeat(4, 86px); grid-template-rows:repeat(3, 86px);
+      gap:12px; padding:26px; background:#fff; border:3px solid #dbeafe; border-radius:18px;
+      transform:rotateX(18deg); box-shadow:0 18px 36px rgba(2,6,23,.12); transition:transform .3s, box-shadow .3s;
+    }
+    .shelf:hover{transform:rotateX(14deg); box-shadow:0 26px 48px rgba(2,6,23,.16)}
+    .slot{
+      background:#f8fafc; border:2px dashed #cbd5e1; border-radius:10px; position:relative;
+      transition:background .25s, transform .2s, border-color .25s;
+    }
+    .slot:hover::after{
+      content:attr(data-tooltip); position:absolute; top:-30px; left:50%; transform:translateX(-50%);
+      background:#0f172a; color:#fff; padding:4px 8px; border-radius:8px; font-size:12px; white-space:nowrap;
+    }
+    .slot.over{background:#e0f2fe; transform:scale(1.05); border-color:#60a5fa}
+
+    .products{
+        display: flex;
+        gap: 15px;
+        overflow-x: auto; /* добавляем горизонтальную прокрутку */
+        padding-bottom: 30px; /* чтобы полоса прокрутки не наслаивалась */
+        scrollbar-width: thin; /* для Firefox */
+        -webkit-overflow-scrolling: touch; /* плавная прокрутка на мобильных */
+        flex-wrap: nowrap; /* запрещаем перенос на новую строку */
+    }
+
+    .products::-webkit-scrollbar {
+        height: 30px;
+    }
+
+    .products::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 9px;
+    }
+
+    .product{
+        flex: 0 0 auto; /* фиксируем размер товара, чтобы он не сжимался */
+    }
+
+    .product img{
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+        margin-bottom: 4px;
+    }
+
+    .product div{
+        text-align: center;
+        line-height: 1.2;
+   }
+
+    .product:hover{transform:translateY(-6px); box-shadow:0 14px 26px rgba(2,6,23,.12)}
+    .product:hover::after{
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: -32px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--color-primary);
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    
+    .product:active{cursor:grabbing; opacity:.9}
+    .badge{
+      position:absolute; top:6px; right:6px; font-size:11px; padding:2px 6px; border-radius:999px;
+      background:#eef2ff; border:1px solid #c7d2fe; color:#322aa3;
+    }
+
+    /* ======== Панель управления ======== */
+    .controls{
+      margin:22px 0 6px; display:flex; justify-content:center; gap:14px; flex-wrap:wrap;
+    }
+    #checkBtn{background:var(--color-accent); color:#fff}
+    #resetBtn{background:var(--color-danger); color:#fff}
+
+    /* ======== Уведомления ======== */
+    .notification{
+      position:fixed; right:20px; bottom:20px; min-width:260px; max-width:360px;
+      background:#fff; border:1px solid var(--color-border); border-left:6px solid #94a3b8;
+      border-radius:14px; padding:12px 14px; box-shadow:var(--shadow);
+      opacity:0; transform:translateY(8px); transition:opacity .25s, transform .25s; z-index:9999;
+    }
+    .notification.show{opacity:1; transform:translateY(0)}
+    .notification.info{border-left-color:#60a5fa}
+    .notification.success{border-left-color:#22c55e}
+    .notification.warning{border-left-color:#f59e0b}
+    .notification.error{border-left-color:#ef4444}
+
+    /* ======== Адаптив ======== */
+    @media (max-width: 640px){
+      header{flex-direction:column; align-items:flex-start}
+      .shelf{grid-template-columns:repeat(3,78px); grid-template-rows:repeat(3,78px); padding:18px}
+      .product{
+        width: 80px;
+        height: 110px;
+        padding: 6px;
+      }
+      .product img{
+        width: 50px;
+        height: 50px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <header>
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div class="title">
+            <h1>Сектор Товаро­движение · Ротация FIFO/FEFO</h1>
+            <small class="hint">Практические правила выкладки и ротации ассортимента</small>
+          </div>
+        </div>
+        <div class="pill" id="playerTag">Гость</div>
+      </header>
+
+<!-- ЭКРАН 1: Авторизация -->
+<section id="login-screen" class="screen active">
+  <div class="center" style="min-height:70vh; padding:20px;">
+    <div style="background:linear-gradient(145deg, #ffffff, #f0f4ff); border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,0.12); padding:36px; max-width:400px; width:100%; display:flex; flex-direction:column; gap:20px; align-items:center;">
+      
+      <h2 style="margin:0; font-size:28px; color:#2563eb; font-weight:700;">Авторизация</h2>
+      <p class="hint" style="text-align:center; color:#64748b; font-size:14px;">Введите имя — оно будет видно в отчётах и на экране уровней.</p>
+      
+      <input id="username" class="input" type="text" placeholder="Ваше имя" 
+             style="width:100%; padding:14px; border-radius:12px; border:1px solid #cbd5e1; font-size:16px; outline:none; transition:0.3s;"/>
+      
+      <div class="row" style="width:100%; justify-content:center; gap:16px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="startGame()"
+                style="flex:1 1 140px; padding:12px 16px; font-size:16px; font-weight:600; border-radius:12px; transition:0.25s;">
+          Войти и продолжить
+        </button>
+        
+        <button class="btn btn-ghost" onclick="notify('Подсказка: FEFO — первыми уходят товары с ближайшим сроком годности. FIFO — первыми уходят товары, пришедшие раньше.', 'info')"
+                style="flex:1 1 140px; padding:12px 16px; font-size:16px; font-weight:600; border-radius:12px; transition:0.25s;">
+          Что за правила?
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ЭКРАН 2: Выбор уровня -->
+<section id="level-selection" class="screen">
+  <div class="stack" style="max-width:1000px; margin-inline:auto; padding:20px;">
+    
+    <!-- Заголовок -->
+    <div class="level-info" style="flex-direction:column; align-items:center; text-align:center; gap:6px;">
+      <h2 style="margin:0; font-size:26px; font-weight:700; color:#2563eb;">Выбор уровня</h2>
+      <div class="hint" style="font-size:14px; color:#64748b;">Выберите категорию и правило ротации.</div>
+    </div>
+
+    <!-- Кнопки уровней -->
+    <div class="row" style="flex-wrap:wrap; gap:24px; justify-content:center; margin-top:24px;">
+      <!-- Карточка уровня -->
+      <div style="flex:1 1 280px; max-width:320px; background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,0.08); cursor:pointer; transition:transform .25s, box-shadow .25s;"
+           onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(0,0,0,0.15)';"
+           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)';"
+           onclick="loadLevel('milk')">
+        <div style="padding:20px; display:flex; flex-direction:column; align-items:center; gap:12px;">
+          <img src="images/milk_pack.png" alt="Молоко" style="width:60px; height:60px; object-fit:contain;">
+          <div style="font-size:16px; font-weight:600; color:#0f172a; text-align:center;">Молочная продукция</div>
+          <div style="font-size:12px; color:#64748b; text-align:center;">FEFO: раньше срок — ближе к покупателю</div>
+        </div>
+      </div>
+
+      <!-- Настройка уровней -->
+      <div style="flex:1 1 280px; max-width:320px; background:#f8fafc; border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,0.05); cursor:pointer; transition:transform .25s, box-shadow .25s;"
+           onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.1)';"
+           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(0,0,0,0.05)';"
+           onclick="notify('Уровни можно настраивать в объекте levels в коде.', 'info')">
+        <div style="padding:20px; display:flex; flex-direction:column; align-items:center; gap:12px;">
+          <img src="images/settings_icon.png" alt="Настройка" style="width:40px; height:40px; object-fit:contain;">
+          <div style="font-size:16px; font-weight:600; color:#0f172a; text-align:center;">Настройка уровней</div>
+          <div style="font-size:12px; color:#64748b; text-align:center;">Добавляйте или редактируйте уровни</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+      <!-- ЭКРАН 3: Игровое поле -->
+      <section id="game-screen" class="screen">
+        <div class="stack" style="max-width:980px; margin-inline:auto">
+          <div class="level-info">
+            <div>
+              <h2 id="levelTitle">Уровень</h2>
+              <div id="levelRule" class="hint">Правило уровня будет здесь</div>
+            </div>
+            <div class="pill">Игрок: <span id="playerName">—</span></div>
+          </div>
+
+          <!-- Полка -->
+          <div class="shelf-wrap">
+            <div class="shelf-container">
+              <div class="shelf" aria-label="Торговая полка">
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+                <div class="slot" data-tooltip="Поставьте товар сюда"></div>
+              </div>
+            </div>
+
+            <!-- Лоток товаров -->
+            <div class="products" aria-label="Зона товаров"></div>
+          </div>
+
+          <!-- Кнопки управления -->
+          <div class="controls">
+            <button id="checkBtn" class="btn" onclick="checkOrder()">Проверить ротацию</button>
+            <button id="resetBtn" class="btn" onclick="resetShelf()">Сбросить полку</button>
+            <button class="btn btn-ghost" onclick="backToMenu()">← К уровням</button>
+            <button class="btn btn-ghost"
+              onclick="notify('Подсказка: следите за датами на товарах. Для FEFO — раньше срок = ближе к покупателю; для FIFO — раньше приход = впереди.', 'info')">
+              Подсказка правил
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+  // ======== Глобальные переменные ========
+  let draggedItem = null;
+  let currentLevel = null;
+
+  // ======== Утилиты экранов ========
+  function showScreen(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    const el = document.getElementById(id);
+    if (el) el.classList.add("active");
+  }
+
+  function startGame() {
+    const name = document.getElementById("username").value.trim();
+    if (!name) {
+      notify("Введите имя для начала.", "warning");
+      return;
+    }
+    document.getElementById("playerName").textContent = name;
+    document.getElementById("playerTag").textContent = name;
+    showScreen("level-selection");
+    notify("Добро пожаловать, " + name + "! Выберите уровень.", "info");
+  }
+
+  // ======== Конфиг уровней (теперь — база + количество) ========
+  const levels = {
+    milk: {
+      name: "Сектор: Молочная продукция",
+      rule: "Правило FEFO: первыми должны продаваться товары с ближайшим сроком годности.",
+      type: "FEFO",
+      baseProduct: {
+        name: "Молоко 3.2%",
+        img: "images/milk_pack.png"
+      },
+      count: 12 // сколько товаров сгенерировать
+    }
+  };
+
+  // ======== Генерация уникальных дат (включительно) ========
+  function generateDateRange(start, end) {
+    const arr = [];
+    const s = new Date(start);
+    const e = new Date(end);
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      arr.push(new Date(d).toISOString().slice(0, 10));
+    }
+    return arr;
+  }
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // ======== Загрузка уровня и генерация товаров ========
+  function loadLevel(levelKey) {
+    currentLevel = levels[levelKey];
+    if (!currentLevel) return;
+
+    const productsContainer = document.querySelector(".products");
+    const shelfSlots = document.querySelectorAll(".slot");
+    productsContainer.innerHTML = "";
+    shelfSlots.forEach(slot => slot.innerHTML = "");
+
+    document.getElementById("levelTitle").textContent = currentLevel.name;
+    document.getElementById("levelRule").textContent = currentLevel.rule;
+
+    // диапазон дат (можешь подправить)
+    const possible = generateDateRange(new Date("2025-08-15"), new Date("2025-08-29"));
+    const dates = shuffle(possible).slice(0, currentLevel.count);
+
+    for (let i = 0; i < currentLevel.count; i++) {
+      const date = dates[i] ?? possible[0]; // запасной вариант
+      const item = document.createElement("div");
+      item.className = "product";
+      item.setAttribute("draggable", "true");
+      item.dataset.date = date;
+      item.dataset.name = currentLevel.baseProduct.name;
+      item.dataset.tooltip = `${currentLevel.baseProduct.name}\nДата: ${date}`;
+      item.innerHTML = `
+        <img src="${currentLevel.baseProduct.img}" 
+             alt="${currentLevel.baseProduct.name}" 
+             style="width:48px;height:auto;display:block;margin:0 auto 4px;">
+        <div style="font-size:12px;font-weight:600;text-align:center;">${currentLevel.baseProduct.name}</div>
+        <div style="font-size:10px;text-align:center;margin-top:2px;">${date}</div>
+      `;
+
+      item.addEventListener("dragstart", dragStart);
+      item.addEventListener("dragend", dragEnd);
+      productsContainer.appendChild(item);
+    }
+
+    // навесить обработчики на слоты (повторно безопасно)
+    shelfSlots.forEach(slot => {
+      slot.removeEventListener("dragover", dragOver);
+      slot.removeEventListener("dragenter", dragEnter);
+      slot.removeEventListener("dragleave", dragLeave);
+      slot.removeEventListener("drop", drop);
+
+      slot.addEventListener("dragover", dragOver);
+      slot.addEventListener("dragenter", dragEnter);
+      slot.addEventListener("dragleave", dragLeave);
+      slot.addEventListener("drop", drop);
+    });
+
+    showScreen("game-screen");
+    notify("Уровень загружен: " + currentLevel.name, "info");
+  }
+
+  function backToMenu() {
+    showScreen("level-selection");
+  }
+
+  // ======== Drag & Drop ========
+  function dragStart() {
+    draggedItem = this;
+    setTimeout(() => this.style.opacity = "0.6", 0);
+  }
+  function dragEnd() {
+    this.style.opacity = "1";
+    draggedItem = null;
+  }
+  function dragOver(e) { e.preventDefault(); }
+  function dragEnter(e) { e.preventDefault(); this.classList.add("over"); }
+  function dragLeave() { this.classList.remove("over"); }
+  function drop() {
+      this.classList.remove("over");
+  if (this.children.length === 0 && draggedItem) {
+    this.appendChild(draggedItem);
+
+    // Масштабируем товар под слот
+    const slotWidth = this.clientWidth;
+    const slotHeight = this.clientHeight;
+
+    draggedItem.style.width = slotWidth + "px";
+    draggedItem.style.height = slotHeight + "px";
+    draggedItem.style.padding = "2px";
+    draggedItem.style.fontSize = "10px";
+
+    // Подгоняем изображение
+    const img = draggedItem.querySelector("img");
+    if(img){
+      img.style.maxWidth = "80%";
+      img.style.maxHeight = "50%";
+    }
+
+    // Подгоняем текст
+    draggedItem.querySelectorAll("div").forEach(d=>{
+      d.style.fontSize = "8px";
+    });
+  }
+}
+
+  // ======== Проверка порядка ========
+    function checkOrder() {
+  const shelfSlots = document.querySelectorAll(".slot");
+  const rows = 3;
+  const cols = 4;
+  let allOk = true;
+
+  for (let c = 0; c < cols; c++) {         // проходим по колонкам
+    for (let r = 0; r < rows - 1; r++) {   // проверяем сверху вниз
+      const idxTop = r * cols + c;
+      const idxBottom = (r + 1) * cols + c;
+      const topSlot = shelfSlots[idxTop];
+      const bottomSlot = shelfSlots[idxBottom];
+
+      if (!topSlot || !bottomSlot || !topSlot.children[0] || !bottomSlot.children[0]) continue;
+
+      const topDate = new Date(topSlot.children[0].dataset.date);
+      const bottomDate = new Date(bottomSlot.children[0].dataset.date);
+
+      // FEFO: сверху должны быть большие даты
+      if (topDate < bottomDate) {
+        topSlot.children[0].style.borderColor = "red";
+        bottomSlot.children[0].style.borderColor = "red";
+        allOk = false;
+      } else {
+        topSlot.children[0].style.borderColor = "#c7d2fe";
+        bottomSlot.children[0].style.borderColor = "#c7d2fe";
+      }
+    }
+  }
+
+  if (allOk) {
+    notify("✅ Ротация FEFO выполнена правильно!", "success");
+    setTimeout(() => showScreen("level-selection"), 1500);
+  } else {
+    notify("❌ Нарушено правило FEFO. Проверьте красные товары.", "error");
+  }
+}
+
+  function highlightErrors(items) {
+    items.forEach((item, i, arr) => {
+      item.style.borderColor = "#e2e8f0"; // reset
+      if (i > 0) {
+        const prev = new Date(arr[i-1].dataset.date);
+        const cur  = new Date(item.dataset.date);
+        const badFIFO = currentLevel?.type === "FIFO" && cur < prev;
+        const badFEFO = currentLevel?.type === "FEFO" && cur > prev;
+        if (badFIFO || badFEFO) {
+          item.style.borderColor = "red";
+        }
+      }
+    });
+  }
+
+  // ======== Сброс ========
+  function resetShelf() {
+    const productArea = document.querySelector(".products");
+    document.querySelectorAll(".slot .product").forEach(item => {
+      item.style.borderColor = "#e2e8f0";
+      productArea.appendChild(item);
+    });
+    notify("Полка очищена. Разместите товары заново.", "info");
+  }
+
+  // ======== Уведомления ========
+  function notify(message, type="info"){
+    const el = document.createElement("div");
+    el.className = `notification ${type}`;
+    el.textContent = message;
+    document.body.appendChild(el);
+    requestAnimationFrame(()=> el.classList.add("show"));
+    setTimeout(() => {
+      el.classList.remove("show");
+      setTimeout(()=> el.remove(), 300);
+    }, 3000);
+  }
+
+  // ======== Небольшая подсказка: Enter = старт ========
+  document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("username");
+    input && input.addEventListener("keydown", e => {
+      if (e.key === "Enter") startGame();
+    });
+  });
+</script>
